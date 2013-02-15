@@ -1,0 +1,40 @@
+#!/usr/bin/env ruby
+
+require 'thor'
+require 'curses'
+require 'colored'
+
+File.tap { |f| require f.expand_path(f.join(f.dirname(__FILE__),'..', 'poe.rb')) }
+
+module Poe
+	class CLI < Thor
+
+		desc "file FILENAME", "Opens a file"
+		method_option :file, :aliases => "-f", :default => "#{Dir.pwd}/file", :desc => "File to edit"
+		def file(filename)
+			Poe::Screen.open do |screen|
+				
+				@editor = Poe::Editor.load(screen, "#{Dir.pwd}/#{filename}")
+				@status_bar = Poe::StatusBar.new(screen, "Poe")
+				Poe::Keyboard.input do
+					Curses.getch
+				end
+				Poe::Keyboard.output do |k|
+					break if k == :"Ctrl+c"
+					@editor.text_cache.save if k == :"Ctrl+x"
+					if k == :resize
+						@status_bar.redraw(screen)
+					else
+						@editor.handle_key(k)
+					end
+					
+				end
+				
+			end
+			
+		end
+	end
+
+end
+
+Poe::CLI.start(ARGV)
